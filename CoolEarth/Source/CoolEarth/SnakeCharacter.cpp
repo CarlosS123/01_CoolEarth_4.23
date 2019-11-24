@@ -17,7 +17,7 @@ ASnakeCharacter::ASnakeCharacter()
 {
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
-	UStaticMeshComponent* MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("name"));
+	//UStaticMeshComponent* MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("name"));
 
 }
 
@@ -77,43 +77,50 @@ void ASnakeCharacter::BeginPlay()
 void ASnakeCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	FVector Direction = GetMesh()->GetRightVector().GetSafeNormal();
-	//UE_LOG(LogTemp, Warning, TEXT("ReplicatedLocation %s"), *Direction.ToString());
-	
-		//GetRelativeRotationFromWorld();
-	
-	//FVector Direction = GetMesh; //FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
-	AddActorWorldOffset(Direction*GetCharacterMovement()->GetMaxSpeed()*DeltaTime, true);
-	//SplineActor->AddActorWorldOffset(Direction*GetCharacterMovement()->GetMaxSpeed()*DeltaTime, false);
-	//SnakeSpline->SetWorldLocation(GetActorLocation());
-
-	//UE_LOG(LogTemp, Warning, TEXT("ReplicatedLocation %s"), *SnakeSpline->GetComponentLocation().ToString());
-	//UE_LOG(LogTemp, Warning, TEXT("ReplicatedLocation %s"), *Snake222->GetComponentLocation().ToString());
-
-	//AddMovementInput(Direction, 1);
-
-	//FSplinePoint CurrentSplinePoint = FSplinePoint(0, GetActorLocation(), ESplinePointType::Constant, GetActorRotation(), FVector(1,1,1));
-	//FSplinePoint CurrentSplinePoint;
-	//CurrentSplinePoint.Position = GetActorLocation();
-	//CurrentSplinePoint.Rotation = GetActorRotation();
-	//SnakeSpline->AddPoint(CurrentSplinePoint, true);
-	//SnakeSpline->SetWorldRotation
-	SnakeSpline->AddSplinePoint(GetActorLocation(), ESplineCoordinateSpace::World, true);
-	//SnakeSpline->SetWorldRotation(SnakeSpline->GetNumberOfSplinePoints() - 1, GetMesh()->SetRelativeRotation());
-	FInterpCurveQuat& SplineRotInfo = SnakeSpline->GetSplinePointsRotation();
-	FInterpCurvePoint<FQuat>& EditedRotPoint = SplineRotInfo.Points[SnakeSpline->GetNumberOfSplinePoints() - 1];
-	EditedRotPoint.OutVal = GetActorRotation().Quaternion();
-
-	//UE_LOG(LogTemp, Warning, TEXT("ReplicatedLocation %f"), SnakeSpline->GetSplineLength());
-
-	for (int n = 0; n < Followers.Num(); n++)
+	if (!isGameOver)
 	{
-		FHitResult Hit;
-		FVector newLocation = FVector(SnakeSpline->GetLocationAtDistanceAlongSpline(SnakeSpline->GetSplineLength() - ((n+1)*followersDistance), ESplineCoordinateSpace::World));
-		Followers[n]->SetActorLocation(newLocation, true, &Hit, ETeleportType::TeleportPhysics);
-		Followers[n]->SetActorRotation(SnakeSpline->GetRotationAtDistanceAlongSpline(SnakeSpline->GetSplineLength() - ((n+1)*followersDistance), ESplineCoordinateSpace::World), ETeleportType::TeleportPhysics);
-	}
+		FVector Direction = GetMesh()->GetRightVector().GetSafeNormal();
+		//UE_LOG(LogTemp, Warning, TEXT("ReplicatedLocation %s"), *Direction.ToString());
+	
+			//GetRelativeRotationFromWorld();
+	
+		//FVector Direction = GetMesh; //FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+		AddActorWorldOffset(Direction*GetCharacterMovement()->GetMaxSpeed()*DeltaTime, true);
+		//SplineActor->AddActorWorldOffset(Direction*GetCharacterMovement()->GetMaxSpeed()*DeltaTime, false);
+		//SnakeSpline->SetWorldLocation(GetActorLocation());
 
+		//UE_LOG(LogTemp, Warning, TEXT("ReplicatedLocation %s"), *SnakeSpline->GetComponentLocation().ToString());
+		//UE_LOG(LogTemp, Warning, TEXT("ReplicatedLocation %s"), *Snake222->GetComponentLocation().ToString());
+
+		//AddMovementInput(Direction, 1);
+
+		//FSplinePoint CurrentSplinePoint = FSplinePoint(0, GetActorLocation(), ESplinePointType::Constant, GetActorRotation(), FVector(1,1,1));
+		//FSplinePoint CurrentSplinePoint;
+		//CurrentSplinePoint.Position = GetActorLocation();
+		//CurrentSplinePoint.Rotation = GetActorRotation();
+		//SnakeSpline->AddPoint(CurrentSplinePoint, true);
+		//SnakeSpline->SetWorldRotation
+		SnakeSpline->AddSplinePoint(GetActorLocation(), ESplineCoordinateSpace::World, true);
+		//SnakeSpline->SetWorldRotation(SnakeSpline->GetNumberOfSplinePoints() - 1, GetMesh()->SetRelativeRotation());
+		FInterpCurveQuat& SplineRotInfo = SnakeSpline->GetSplinePointsRotation();
+		FInterpCurvePoint<FQuat>& EditedRotPoint = SplineRotInfo.Points[SnakeSpline->GetNumberOfSplinePoints() - 1];
+		EditedRotPoint.OutVal = GetActorRotation().Quaternion();
+
+		//UE_LOG(LogTemp, Warning, TEXT("ReplicatedLocation %f"), SnakeSpline->GetSplineLength());
+
+		for (int n = 0; n < Followers.Num(); n++)
+		{
+			if (Followers[n]->IsValidLowLevel())
+			{
+				FHitResult Hit;
+				FVector newLocation = FVector(SnakeSpline->GetLocationAtDistanceAlongSpline(SnakeSpline->GetSplineLength() - ((n + 1)*followersDistance), ESplineCoordinateSpace::World));
+				newLocation.Z = Followers[n]->GetActorLocation().Z;
+				//UE_LOG(LogTemp, Warning, TEXT("ReplicatedLocation: %s"), *newLocation.ToString());
+				Followers[n]->SetActorLocation(newLocation, true, &Hit, ETeleportType::None);
+				Followers[n]->SetActorRotation(SnakeSpline->GetRotationAtDistanceAlongSpline(SnakeSpline->GetSplineLength() - ((n + 1)*followersDistance), ESplineCoordinateSpace::World), ETeleportType::None);
+			}
+		}
+	}
 }
 
 // Called to bind functionality to input
@@ -126,6 +133,7 @@ void ASnakeCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 
 void ASnakeCharacter::following(AActor* NewFollower)
 {
+
 	Followers.Add(NewFollower);
 	UE_LOG(LogTemp, Warning, TEXT("NewFollower: %d"), Followers.Num());
 	//UE_LOG(LogTemp, Warning, TEXT("NewFollower: %s"), *NewFollower->GetName());
